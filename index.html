@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>素材排行看板</title>
+<!-- 本地数据文件，服务未运行时也能直接查看 -->
+<script src="rankings_data.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f5f7fa;--card:#ffffff;--card2:#f8f9fb;--card3:#eef0f4;--border:#dde1e7;--text:#1f2937;--text2:#6b7280;--text3:#9ca3af;--accent:#2563eb;--accent2:#3b82f6;--abg:rgba(37,99,235,.08);--green:#16a34a;--red:#dc2626;--orange:#d97706;--cyan:#0891b2;--pink:#db2777;--purple:#7c3aed;--r:12px;--fs:13px;--tbh:52px}
+html{font-size:var(--fs)}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s}
+.topbar{position:sticky;top:0;z-index:100;height:var(--tbh);display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--card);border-bottom:1px solid var(--border)}
+.topbar-l{display:flex;align-items:center;gap:12px}.logo{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.st{font-size:10px;color:var(--text2);display:flex;align-items:center;gap:5px}.st-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pu 2s infinite}@keyframes pu{0%,100%{opacity:1}50%{opacity:.4}}
+.timer{padding:2px 8px;border-radius:16px;font-size:10px;background:var(--abg);color:var(--accent2);font-weight:500}
+.topbar-r{display:flex;align-items:center;gap:10px}
+.bi{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s}.bi:hover{border-color:var(--accent);color:var(--accent)}
+.main{max-width:1600px;margin:0 auto;padding:16px}
+
+/* filter */
+.gf{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;background:var(--card);border-radius:10px;margin-bottom:14px;border:1px solid var(--border)}
+.gf label{font-size:10px;color:var(--text2);white-space:nowrap}
+.gf select,.gf input{padding:3px 7px;background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:10px;outline:none}
+.gf select:focus,.gf input:focus{border-color:var(--accent)}.fsp{width:1px;height:18px;background:var(--border)}
+.bf{padding:3px 12px;border-radius:5px;border:none;cursor:pointer;font-size:10px}.bf.p{background:var(--accent);color:#fff}.bf.s{background:var(--card2);color:var(--text2);border:1px solid var(--border)}.bf:disabled{opacity:.5;cursor:not-allowed}
+
+/* table */
+.tw{overflow-x:auto;border-radius:6px;border:1px solid var(--border);max-height:75vh;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}thead{background:var(--card2);position:sticky;top:0;z-index:10}
+th{padding:7px 8px;text-align:left;font-weight:600;color:var(--text2);white-space:nowrap;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}th:hover{color:var(--accent)}
+th .sa{font-size:8px;margin-left:2px;color:var(--text3)}
+td{padding:6px 8px;border-bottom:1px solid rgba(42,46,69,.2);white-space:nowrap}
+tr:hover td{background:var(--abg)}
+.rank{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px}
+.rank-1{background:linear-gradient(135deg,#ffd700,#ffb700);color:#000}
+.rank-2{background:linear-gradient(135deg,#c0c0c0,#a0a0a0);color:#000}
+.rank-3{background:linear-gradient(135deg,#cd7f32,#b87333);color:#fff}
+.rank-n{background:var(--card3);color:var(--text2)}
+.vp{color:var(--green)}.vn{color:var(--red)}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600}
+.tag-bl1{background:rgba(59,130,246,.12);color:#3b82f6}.tag-bl2{background:rgba(8,145,178,.12);color:#0891b2}
+.tag-bl3{background:rgba(22,163,74,.12);color:#16a34a}.tag-bl4{background:rgba(234,88,12,.12);color:#ea580c}
+.col-hid{display:none}
+
+/* drawer */
+.drawer-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}.drawer-ov.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:320px;background:var(--card);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column}.drawer.open{transform:translateX(0)}
+.dr-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}.dr-h h2{font-size:14px;font-weight:600}.dr-c{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer}
+.dr-b{flex:1;overflow-y:auto;padding:16px}
+.ds{margin-bottom:18px}.ds h4{font-size:10px;color:var(--text2);margin-bottom:8px;letter-spacing:.4px}
+.ml{list-style:none}.ml li{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;margin-bottom:2px;border:1px solid transparent}.ml li:hover{background:var(--card2)}
+.ml .mn{flex:1;font-size:11px}
+.tg{position:relative;width:32px;height:16px;flex-shrink:0}.tg input{opacity:0;width:0;height:0}.tg .sl{position:absolute;inset:0;background:var(--card3);border-radius:16px;cursor:pointer;transition:.3s}.tg .sl::before{content:'';position:absolute;width:12px;height:12px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s}.tg input:checked+.sl{background:var(--accent)}.tg input:checked+.sl::before{transform:translateX(16px)}
+.br{width:100%;padding:7px;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--text2);cursor:pointer;font-size:11px;margin-top:4px}.br:hover{border-color:var(--red);color:var(--red)}
+
+/* toast */
+.toast{position:fixed;bottom:16px;right:16px;padding:8px 16px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:11px;z-index:300;transform:translateY(60px);opacity:0;transition:all .3s}.toast.show{transform:translateY(0);opacity:1}
+
+/* loading */
+.ld{text-align:center;padding:40px;color:var(--text3);font-size:12px}
+.ld::after{content:'';display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;margin-left:8px;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.empty{text-align:center;padding:60px;color:var(--text3);font-size:12px}
+.empty a{color:var(--accent);text-decoration:underline;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-l">
+    <div class="logo">素材排行看板</div>
+    <div class="st" id="stRun" style="display:none"><span class="st-dot"></span><span>运行中</span></div>
+  </div>
+  <div class="topbar-r">
+    <span class="timer" id="tmr">&#8635; <span id="tmrT">--:--</span></span>
+    <span class="st" id="stUpd" style="display:none"><span id="updT"></span></span>
+    <button class="bi" onclick="fetchData()" title="立即刷新">&#128260;</button>
+    <button class="bi" onclick="toggleDrawer()" title="设置">&#9881;</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Filter -->
+  <div class="gf">
+    <label>业务线：</label>
+    <select id="fBiz" onchange="applyFilter()"><option value="all">全部</option></select>
+    <div class="fsp"></div>
+    <label>排序：</label>
+    <select id="fSort" onchange="applyFilter()">
+      <option value="spend-desc">消耗 ↓</option>
+      <option value="spend-asc">消耗 ↑</option>
+      <option value="rank-asc">排名 ↑</option>
+    </select>
+    <div class="fsp"></div>
+    <label>关键词：</label>
+    <input type="text" id="fKeyword" placeholder="搜索素材名称/ID..." oninput="applyFilter()" style="width:150px">
+    <div class="fsp"></div>
+    <label>排除：</label>
+    <input type="text" id="fExclude" placeholder="多个用逗号分隔..." oninput="applyFilter()" style="width:130px">
+    <div class="fsp"></div>
+    <button class="bf p" onclick="fetchData()" id="btnRefresh">刷新数据</button>
+    <button class="bf s" onclick="exportData()">导出</button>
+    <button class="bf s" onclick="copyTtIds()">复制头条ID</button>
+    <button class="bf s" onclick="resetFilter()">重置</button>
+  </div>
+
+  <!-- Table -->
+  <div class="tw" id="tableWrap">
+    <div class="ld" id="loading">正在加载数据...</div>
+    <div class="empty" id="empty" style="display:none">
+      暂无数据，请确保数据服务已启动<br>
+      <a onclick="fetchData()">点击重试</a>
+    </div>
+    <table id="dataTable" style="display:none">
+      <thead><tr id="theadRow"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div class="drawer-ov" id="dOv" onclick="toggleDrawer()"></div>
+<div class="drawer" id="drw">
+  <div class="dr-h"><h2>&#9881; 设置</h2><button class="dr-c" onclick="toggleDrawer()">&times;</button></div>
+  <div class="dr-b">
+    <div class="ds"><h4>列显示控制</h4><ul class="ml" id="colList"></ul></div>
+    <div class="ds"><h4>素材内容列</h4><p style="font-size:10px;color:var(--text3);margin-bottom:8px">素材内容列默认隐藏，可在上方开启</p></div>
+    <button class="br" onclick="resetCols()">恢复默认列设置</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== 配置 =====================
+const API_URL = 'http://localhost:3456/api/rankings';
+const STATUS_URL = 'http://localhost:3456/api/status';
+const REFRESH_INTERVAL = 60 * 60 * 1000; // 1小时
+
+// 字段映射（支持多种可能的字段名）
+const FIELD_MAP = {
+  rank:      ['_rank','rank','排行','排名','序号','order','rownum'],
+  materialId:['materialId','material_id','素材ID','素材id','materialNo','编号','id'],
+  materialName:['materialName','material_name','素材名称','name','标题','title','素材名'],
+  materialContent:['content','materialContent','素材内容','文案','描述','素材描述','text'],
+  businessLine:['_businessLine','businessLine','business_line','业务线','渠道','lineName','ywLine'],
+  spend:     ['spend','consume','cost','消耗','今日消耗','costAmount','consumeAmount','当日消耗'],
+  impressions:['impressions','show','展示量','曝光量','showCount','impression','showNum','展现量'],
+  clicks:    ['clicks','click','点击量','clickCount','clickNum','点击数'],
+  ctr:       ['ctr','clickRate','点击率','clickThroughRate','点击率(CTR)'],
+  conversions:['conversions','convert','转化量','订阅量','orderCount','conversion','转化数'],
+  cvr:       ['cvr','convertRate','转化率','conversionRate','转化率(CVR)'],
+  acqCost:   ['acqCost','acquisitionCost','获客成本','cpa','获客成本(元)'],
+  roi:       ['roi','ROI','returnOnInvestment','投资回报率'],
+  ttMaterialId: ['ttMaterialId','头条素材ID','ttMaterial','tt_id','头条ID']
+};
+
+// 列配置
+const COL_DEFS = [
+  { key: 'rank', label: '排名', width: '60px', always: true },
+  { key: 'materialId', label: '素材ID', width: '100px' },
+  { key: 'ttMaterialId', label: '头条素材ID', width: '100px' },
+  { key: 'materialName', label: '素材名称', width: '200px' },
+  { key: 'materialContent', label: '素材内容', width: '300px', defaultHide: true },
+  { key: 'businessLine', label: '业务线', width: '130px' },
+  { key: 'spend', label: '消耗', width: '100px' },
+  { key: 'impressions', label: '展示量', width: '90px' },
+  { key: 'clicks', label: '点击量', width: '80px' },
+  { key: 'ctr', label: '点击率', width: '80px' },
+  { key: 'conversions', label: '转化量', width: '80px' },
+  { key: 'cvr', label: '转化率', width: '80px' },
+  { key: 'acqCost', label: '获客成本', width: '90px' },
+  { key: 'roi', label: 'ROI', width: '70px' }
+];
+
+// ===================== 状态 =====================
+let rawData = null;
+let fd = [];
+let colState = {};
+let fieldMap = {};
+let nextRefresh = Date.now() + REFRESH_INTERVAL;
+
+// ===================== 工具函数 =====================
+function fmt(n, d=2) {
+  if (n === null || n === undefined || n === '') return '-';
+  if (typeof n === 'string') {
+    const parsed = parseFloat(n.replace(/,/g, '').replace(/[¥￥]/g, ''));
+    if (!isNaN(parsed)) n = parsed; else return n;
+  }
+  if (typeof n !== 'number') return String(n);
+  if (Math.abs(n) >= 10000) return (n / 10000).toFixed(d) + '万';
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function fmtP(n) {
+  if (n === null || n === undefined || n === '') return '-';
+  if (typeof n === 'string') {
+    const parsed = parseFloat(n.replace(/,/g, '').replace(/%/g, ''));
+    if (!isNaN(parsed)) n = parsed;
+  }
+  if (typeof n === 'number') {
+    if (n > 1) return (n).toFixed(2) + '%';
+    return (n * 100).toFixed(2) + '%';
+  }
+  return String(n);
+}
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===================== 字段探测 =====================
+function detectFields(item) {
+  const keys = Object.keys(item);
+  const result = {};
+  for (const [standard, candidates] of Object.entries(FIELD_MAP)) {
+    for (const c of candidates) {
+      if (keys.includes(c)) { result[standard] = c; break; }
+    }
+  }
+  return result;
+}
+function getField(item, key) {
+  const fk = fieldMap[key];
+  return fk ? item[fk] : item[key];
+}
+
+// ===================== 初始化 =====================
+function initColState() {
+  const saved = localStorage.getItem('material_col_state');
+  if (saved) {
+    colState = JSON.parse(saved);
+  } else {
+    COL_DEFS.forEach(c => { colState[c.key] = !c.defaultHide; });
+  }
+}
+function saveColState() {
+  localStorage.setItem('material_col_state', JSON.stringify(colState));
+}
+function buildColList() {
+  const ul = document.getElementById('colList');
+  ul.innerHTML = '';
+  COL_DEFS.forEach(c => {
+    if (c.always) return;
+    const li = document.createElement('li');
+    li.innerHTML = `<span class="mn">${c.label}</span><label class="tg"><input type="checkbox" ${colState[c.key] ? 'checked' : ''} onchange="toggleCol('${c.key}',this.checked)"><span class="sl"></span></label>`;
+    ul.appendChild(li);
+  });
+}
+function toggleCol(key, vis) {
+  colState[key] = vis;
+  saveColState();
+  renderTable();
+}
+function resetCols() {
+  COL_DEFS.forEach(c => { colState[c.key] = !c.defaultHide; });
+  saveColState();
+  buildColList();
+  renderTable();
+  toast('已恢复默认列设置');
+}
+function toggleDrawer() {
+  document.getElementById('drw').classList.toggle('open');
+  document.getElementById('dOv').classList.toggle('open');
+}
+
+// ===================== 数据获取 =====================
+async function fetchData() {
+  const btn = document.getElementById('btnRefresh');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = '';
+  document.getElementById('empty').style.display = 'none';
+  document.getElementById('dataTable').style.display = 'none';
+
+  try {
+    // 优先从服务获取实时数据
+    let data = null;
+    let source = 'api';
+    try {
+      const res = await fetch(API_URL);
+      if (res.ok) { data = await res.json(); }
+    } catch (e) {}
+
+    // 如果服务不可用，回退到本地 JS 数据文件
+    if (!data && window.MR_DATA) {
+      data = window.MR_DATA;
+      source = 'local';
+    }
+
+    if (!data) throw new Error('暂无数据，服务未运行且未找到本地数据文件');
+    rawData = data;
+    if (data.items && data.items.length > 0) {
+      fieldMap = detectFields(data.items[0]);
+      fd = data.items;
+      setupBizFilter();
+      applyFilter();
+      updateTime(data.updateTimeCN || data.updateTime);
+      if (source === 'api') {
+        nextRefresh = Date.now() + REFRESH_INTERVAL;
+        toast(`数据已更新，共 ${data.total} 条`);
+      } else {
+        document.getElementById('tmrT').textContent = '本地';
+        toast(`已加载本地数据，共 ${data.total} 条（服务未运行）`);
+      }
+    } else {
+      showEmpty();
+    }
+  } catch (err) {
+    console.error(err);
+    toast('获取数据失败: ' + err.message);
+    showEmpty();
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+function showEmpty() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('empty').style.display = '';
+  document.getElementById('dataTable').style.display = 'none';
+  document.getElementById('kpiG').innerHTML = '';
+}
+function updateTime(t) {
+  const el = document.getElementById('stUpd');
+  el.style.display = 'flex';
+  document.getElementById('updT').textContent = '更新 ' + (t || '');
+}
+
+// ===================== 筛选 =====================
+function setupBizFilter() {
+  const sel = document.getElementById('fBiz');
+  const lines = [...new Set(fd.map(d => getField(d, 'businessLine')).filter(Boolean))];
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">全部</option>';
+  lines.forEach(l => { sel.innerHTML += `<option value="${l}">${l}</option>`; });
+  if (lines.includes(cur)) sel.value = cur;
+}
+function applyFilter() {
+  const biz = document.getElementById('fBiz').value;
+  const sortVal = document.getElementById('fSort').value;
+  const keyword = document.getElementById('fKeyword').value.trim().toLowerCase();
+  const exclude = document.getElementById('fExclude').value.trim().toLowerCase();
+
+  fd = rawData.items.slice();
+  if (biz !== 'all') {
+    fd = fd.filter(d => String(getField(d, 'businessLine')) === biz);
+  }
+  if (keyword) {
+    fd = fd.filter(d => {
+      const name = String(getField(d, 'materialName') || '').toLowerCase();
+      const id = String(getField(d, 'materialId') || '').toLowerCase();
+      const ttId = String(getField(d, 'ttMaterialId') || '').toLowerCase();
+      return name.includes(keyword) || id.includes(keyword) || ttId.includes(keyword);
+    });
+  }
+  if (exclude) {
+    const excludeList = exclude.split(/[,，\s\n]+/).filter(Boolean);
+    fd = fd.filter(d => {
+      const name = String(getField(d, 'materialName') || '').toLowerCase();
+      const id = String(getField(d, 'materialId') || '').toLowerCase();
+      const ttId = String(getField(d, 'ttMaterialId') || '').toLowerCase();
+      const combined = name + ' ' + id + ' ' + ttId;
+      return !excludeList.some(kw => combined.includes(kw));
+    });
+  }
+
+  const [sortKey, sortDir] = sortVal.split('-');
+  fd.sort((a, b) => {
+    let va = getField(a, sortKey);
+    let vb = getField(b, sortKey);
+    if (va === undefined) va = a[sortKey];
+    if (vb === undefined) vb = b[sortKey];
+    const na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) {
+      return sortDir === 'asc' ? na - nb : nb - na;
+    }
+    return sortDir === 'asc'
+      ? String(va).localeCompare(String(vb))
+      : String(vb).localeCompare(String(va));
+  });
+
+  renderTable();
+}
+function resetFilter() {
+  document.getElementById('fBiz').value = 'all';
+  document.getElementById('fSort').value = 'spend-desc';
+  document.getElementById('fKeyword').value = '';
+  document.getElementById('fExclude').value = '';
+  applyFilter();
+}
+
+function exportData() {
+  if (!fd || fd.length === 0) { toast('暂无数据可导出'); return; }
+  const activeCols = COL_DEFS.filter(c => colState[c.key] !== false && (c.always || fieldMap[c.key] || fd.some(d => getField(d, c.key) !== undefined)));
+  const headers = activeCols.map(c => c.label).join('\t');
+  const rows = fd.map(row => {
+    return activeCols.map(c => {
+      const val = getField(row, c.key);
+      if (val === undefined || val === null) return '';
+      return String(val).replace(/\t/g, ' ').replace(/\n/g, ' ');
+    }).join('\t');
+  }).join('\n');
+  const blob = new Blob([headers + '\n' + rows], { type: 'text/tab-separated-values;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `素材排行数据_${new Date().toLocaleDateString('zh-CN')}.tsv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`已导出 ${fd.length} 条数据`);
+}
+
+function copyTtIds() {
+  if (!fd || fd.length === 0) { toast('暂无数据'); return; }
+  const ids = fd.map(d => getField(d, 'ttMaterialId')).filter(Boolean);
+  if (ids.length === 0) { toast('当前数据中未找到头条素材ID'); return; }
+  const text = ids.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    toast(`已复制 ${ids.length} 个头条素材ID`);
+  }).catch(() => {
+    // 降级方案
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast(`已复制 ${ids.length} 个头条素材ID`);
+  });
+}
+
+// ===================== 渲染 =====================
+let sortState = {};
+function sortTable(colKey) {
+  const k = colKey;
+  sortState[k] = sortState[k] === 'asc' ? 'desc' : 'asc';
+  const dir = sortState[k];
+  fd.sort((a, b) => {
+    let va = getField(a, colKey); if (va === undefined) va = a[colKey];
+    let vb = getField(b, colKey); if (vb === undefined) vb = b[colKey];
+    const na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return dir === 'asc' ? na - nb : nb - na;
+    return dir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  renderTable();
+}
+
+function renderTable() {
+  const table = document.getElementById('dataTable');
+  const thead = document.getElementById('theadRow');
+  const tbody = document.getElementById('tbody');
+
+  // 只显示有数据的列
+  const activeCols = COL_DEFS.filter(c => colState[c.key] !== false && (c.always || fieldMap[c.key] || fd.some(d => getField(d, c.key) !== undefined)));
+
+  thead.innerHTML = activeCols.map(c => {
+    const arrow = sortState[c.key] ? (sortState[c.key] === 'asc' ? '&#9650;' : '&#9660;') : '&#8597;';
+    return `<th onclick="sortTable('${c.key}')" style="width:${c.width || 'auto'}">${c.label}<span class="sa">${arrow}</span></th>`;
+  }).join('');
+
+  tbody.innerHTML = fd.map((row, idx) => {
+    const tds = activeCols.map(c => {
+      const val = getField(row, c.key);
+      if (c.key === 'rank') {
+        const cls = val <= 3 ? `rank rank-${val}` : 'rank rank-n';
+        return `<td><span class="${cls}">${val || idx + 1}</span></td>`;
+      }
+      if (c.key === 'materialName' || c.key === 'materialContent') {
+        const s = String(val || '-');
+        return `<td title="${s}">${s.length > 30 ? s.substring(0, 30) + '...' : s}</td>`;
+      }
+      if (c.key === 'businessLine') {
+        const bl = String(val || '-');
+        const blIdx = (document.getElementById('fBiz').querySelector(`option[value="${bl}"]`)?.index || 0);
+        return `<td><span class="tag tag-bl${((blIdx - 1) % 4) + 1}">${bl}</span></td>`;
+      }
+      if (c.key === 'spend' || c.key === 'acqCost') {
+        const n = parseFloat(val);
+        return `<td>${isNaN(n) ? '-' : '¥' + fmt(n)}</td>`;
+      }
+      if (c.key === 'impressions' || c.key === 'clicks' || c.key === 'conversions') {
+        const n = parseFloat(val);
+        return `<td>${isNaN(n) ? '-' : fmt(n, 0)}</td>`;
+      }
+      if (c.key === 'ctr' || c.key === 'cvr') {
+        return `<td>${fmtP(val)}</td>`;
+      }
+      if (c.key === 'roi') {
+        const n = parseFloat(val);
+        const cls = !isNaN(n) && n >= 1 ? 'vp' : (!isNaN(n) && n < 1 ? 'vn' : '');
+        return `<td class="${cls}">${isNaN(n) ? '-' : n.toFixed(2)}</td>`;
+      }
+      return `<td>${val === undefined || val === null ? '-' : val}</td>`;
+    }).join('');
+    return `<tr>${tds}</tr>`;
+  }).join('');
+
+  table.style.display = '';
+}
+
+// ===================== 定时器 =====================
+function startTimer() {
+  setInterval(() => {
+    const now = Date.now();
+    const remain = Math.max(0, nextRefresh - now);
+    const m = Math.floor(remain / 60000);
+    const s = Math.floor((remain % 60000) / 1000);
+    document.getElementById('tmrT').textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+    if (remain <= 0 && !document.hidden) {
+      fetchData();
+      nextRefresh = now + REFRESH_INTERVAL;
+    }
+  }, 1000);
+}
+
+// ===================== 启动 =====================
+initColState();
+buildColList();
+fetchData();
+startTimer();
+</script>
+</body>
+</html>
